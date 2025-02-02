@@ -15,6 +15,7 @@
 
 #include <isa.h>
 #include <cpu/cpu.h>
+#include <memory/paddr.h>
 #include <readline/readline.h>
 #include <readline/history.h>
 #include "sdb.h"
@@ -53,18 +54,71 @@ static int cmd_q(char *args) {
 	return -1;
 }
 
+static int cmd_si(char *args) {
+	if (args == NULL) {
+		cpu_exec(1);
+		return 1;
+	}
+	int step = 0;
+	int len = strlen(args);
+	for (int i = 0; i < len; i++) {
+		step = step * 10 + *(args + i) - '0';
+	}
+	cpu_exec(step);
+	return step;
+}
+
+static int cmd_info(char *args) {
+	Assert(args != NULL, "");
+	if (*args == 'r') {
+		isa_reg_display();
+		return 0;
+	}
+	if (*args == 'w') {
+		Log("TODO");
+		return -1;
+	}
+	Log("Info Args Error!");
+	return -1;
+}
+
+static int cmd_x(char *args) {
+	word_t addr = 0, n = 0;
+	char *N = strtok(args, " ");
+	char *EXPR = args + strlen(N) + 1;
+	for (int i = 2; i < strlen(EXPR); i++) {
+		addr = addr * 16 + EXPR[i] - '0';
+	}
+	for (int i = 0; i < strlen(N); i++) {
+		n = n * 10 + N[i] - '0';
+	}
+	Log("%d %x", n, addr);
+	for (word_t offset = 0; offset < n; offset++) {
+		printf("0x%.8x: 0x%.8x", addr + offset * 4, paddr_read(addr + offset * 4, 4));
+		if ((offset + 1) % 4 != 0 && offset != n - 1) {
+			printf("    ");
+		} else {
+			printf("\n");
+		}		
+	}
+	return 0;
+}
+
 static int cmd_help(char *args);
 
 static struct {
-  const char *name;
-  const char *description;
-  int (*handler) (char *);
+	const char *name;
+	const char *description;
+	int (*handler) (char *);
 } cmd_table [] = {
-  { "help", "Display information about all supported commands", cmd_help },
-  { "c", "Continue the execution of the program", cmd_c },
-  { "q", "Exit NEMU", cmd_q },
-
-  /* TODO: Add more commands */
+	{ "help", "Display information about all supported commands", cmd_help },
+	{ "c", "Continue the execution of the program", cmd_c },
+	{ "q", "Exit NEMU", cmd_q },
+	{ "si", "Single step execution", cmd_si },
+	{ "info", "Print program status", cmd_info },
+	{ "x", "Scan memory", cmd_x },
+	
+	/* TODO: Add more commands */
 
 };
 
