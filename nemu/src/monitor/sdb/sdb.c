@@ -83,23 +83,47 @@ static int cmd_info(char *args) {
 }
 
 static int cmd_x(char *args) {
-	word_t addr = 0, n = 0;
-	char *N = strtok(args, " ");
-	char *EXPR = args + strlen(N) + 1;
-	for (int i = 2; i < strlen(EXPR); i++) {
-		addr = addr * 16 + EXPR[i] - '0';
+	if (args == NULL) {
+		puts("Command format: \"x N EXPR\"");
+		return 0;
 	}
-	for (int i = 0; i < strlen(N); i++) {
-		n = n * 10 + N[i] - '0';
+
+	char *p = strtok(NULL, " ");
+
+	if (p == NULL) {
+		puts("Command format: \"x N EXPR\"");
+		return 0;
 	}
-	Log("%d %x", n, addr);
-	for (word_t offset = 0; offset < n; offset++) {
-		printf("0x%.8x: 0x%.8x", addr + offset * 4, paddr_read(addr + offset * 4, 4));
-		if ((offset + 1) % 4 != 0 && offset != n - 1) {
-			printf("    ");
-		} else {
-			printf("\n");
-		}		
+
+	args += strlen(p) + 1;
+	int start;
+	sscanf(p, "%d", &start);
+
+	bool success;
+	uint32_t len = expr(args, &success);
+	if (!success) {
+		printf("invalid expression: '%s'\n", args);
+	} else {
+		int i;
+		for (i = 0; i < len; i++) {
+			printf("0x%08x: 0x%08x\n", start + i, paddr_read(start + i * 4, 4));
+		}
+	}
+	return 0;
+}
+
+static int cmd_p(char *args) {
+	if (args == NULL) {
+		puts("Command format: \"p EXPR\"");
+		return 0;
+	}
+
+	bool success;
+	uint32_t val = expr(args, &success);
+	if (!success) {
+		printf("invalid expression: '%s'\n", args);
+	} else {
+		printf("HEX: 0x%x    DEC: %u\n", val, val);
 	}
 	return 0;
 }
@@ -117,7 +141,8 @@ static struct {
 	{ "si", "Single step execution", cmd_si },
 	{ "info", "Print program status", cmd_info },
 	{ "x", "Scan memory", cmd_x },
-	
+	{ "p", "Calc", cmd_p }
+
 	/* TODO: Add more commands */
 
 };
