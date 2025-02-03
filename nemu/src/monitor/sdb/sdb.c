@@ -15,7 +15,6 @@
 
 #include <isa.h>
 #include <cpu/cpu.h>
-#include <memory/paddr.h>
 #include <readline/readline.h>
 #include <readline/history.h>
 #include "sdb.h"
@@ -68,6 +67,8 @@ static int cmd_si(char *args) {
 	return step;
 }
 
+void display_wp();
+
 static int cmd_info(char *args) {
 	Assert(args != NULL, "");
 	if (*args == 'r') {
@@ -75,12 +76,14 @@ static int cmd_info(char *args) {
 		return 0;
 	}
 	if (*args == 'w') {
-		Log("TODO");
-		return -1;
+		display_wp();
+		return 0;
 	}
 	Log("Info Args Error!");
 	return -1;
 }
+
+word_t paddr_read(paddr_t addr, int len);
 
 static int cmd_x(char *args) {
 	if (args == NULL) {
@@ -96,11 +99,11 @@ static int cmd_x(char *args) {
 	}
 
 	args += strlen(p) + 1;
-	int start;
-	sscanf(p, "%d", &start);
+	int len;
+	sscanf(p, "%d", &len);
 
 	bool success;
-	uint32_t len = expr(args, &success);
+	uint32_t start = expr(args, &success);
 	if (!success) {
 		printf("invalid expression: '%s'\n", args);
 	} else {
@@ -128,6 +131,21 @@ static int cmd_p(char *args) {
 	return 0;
 }
 
+void add_wp(char *e);
+void delete_wp(int n);
+
+static int cmd_w(char *args) {
+	add_wp(args);
+	return 0;
+}
+
+static int cmd_d(char *args) {
+	int n;
+	sscanf(args, "%d", &n);
+	delete_wp(n);
+	return 0;
+}
+
 static int cmd_help(char *args);
 
 static struct {
@@ -141,7 +159,9 @@ static struct {
 	{ "si", "Single step execution", cmd_si },
 	{ "info", "Print program status", cmd_info },
 	{ "x", "Scan memory", cmd_x },
-	{ "p", "Calc", cmd_p }
+	{ "p", "Calc expr", cmd_p },
+	{ "w", "Add watchpoint", cmd_w },
+	{ "d", "Delete watchpoint", cmd_d }
 
 	/* TODO: Add more commands */
 

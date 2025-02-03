@@ -31,7 +31,8 @@ enum {
 	TK_OR,
 	TK_HEX,
 	TK_DEC,
-	TK_REG
+	TK_REG,
+	TK_DEREF
 
   /* TODO: Add more token types */
 
@@ -210,6 +211,7 @@ static bool check_parentheses(int p, int q) {
 static int tokens_priority(int type) {
 	switch (type) {
 		case '!': return 5;
+		case TK_DEREF: return 5;
 		case '*': return 4;
 		case '/': return 4;
 		case '+': return 3;
@@ -228,6 +230,8 @@ static int tokens_priority(int type) {
 
 extern const char *regs[];
 
+word_t paddr_read(paddr_t addr, int len);
+
 static uint32_t eval(int p, int q) {
     if(p > q) {
         return 0;
@@ -240,16 +244,14 @@ static uint32_t eval(int p, int q) {
 
 		if (tokens[p].type == TK_REG) {
 			char *reg_name = tokens[p].str + 1;
-			if (*reg_name == '0') {
-				return cpu.gpr[0];
+			bool success = false;
+			uint32_t val = isa_reg_str2val(reg_name, &success);
+			if (success) {
+				return val;
+			} else {
+				printf("Reg $%s is not found!", reg_name);
+				return 0;
 			}
-			for (int i = 1; i < 32; i++) {
-				if (strcmp(reg_name, regs[i]) == 0) {
-					return cpu.gpr[i];
-				}
-			}
-			printf("Reg %s not found!", reg_name);
-			return 0;
 		} else if (tokens[p].type == TK_HEX || tokens[p].type == TK_DEC) {
 			uint32_t res = 0;
 			if (tokens[p].type == TK_DEC) {
@@ -314,6 +316,7 @@ static uint32_t eval(int p, int q) {
             case '-': return val1 - val2;
             case '*': return val1 * val2;
             case '/': return val1 / val2;
+			case TK_DEREF: return paddr_read(val2, 4);
 			case TK_EQ: return val1 == val2;
 			case TK_NEQ: return val1 != val2;
 			case TK_LEQ: return val1 <= val2;
@@ -334,6 +337,17 @@ word_t expr(char *e, bool *success) {
 		*success = false;
 		return 0;
 	}
+
+	
+	for (int i = 0; i < nr_token; i++) {
+		if (tokens[i].type == '*' && (i == 0 || tokens[i - 1].type == '+'
+											 || tokens[i - 1].type == '-'
+											 || tokens[i - 1].type == '*'
+											 || tokens[i - 1].type == '/')) {
+			tokens[i].type = TK_DEREF;
+		}
+	}
+
 
 	*success = true;
 	return eval(0, nr_token - 1);
