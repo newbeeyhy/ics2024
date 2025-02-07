@@ -127,13 +127,17 @@ static void print(void (*putc)(char), va_list ap, char *first) {
     }
 }
 
+#define PRINT_FMT(callback) { \
+    va_list ap; \
+    va_start(ap, fmt); \
+    char *first = (char *)fmt; \
+    print(callback, ap, first); \
+    va_end(ap);\
+}
+
 int printf(const char *fmt, ...) {
     printf_len = 0;
-    va_list ap;
-    va_start(ap, fmt);
-    char *first = (char *)fmt;
-    print(printf_char, ap, first);
-    va_end(ap);
+    PRINT_FMT(printf_char);
     return printf_len;
 }
 
@@ -144,11 +148,7 @@ int vsprintf(char *out, const char *fmt, va_list ap) {
 int sprintf(char *out, const char *fmt, ...) {
     //out <- fmt
     sprintf_out = out;
-    va_list ap;
-    va_start(ap, fmt);
-    char *first = (char *)fmt;
-    print(sprintf_char, ap, first);
-    va_end(ap);
+    PRINT_FMT(sprintf_char);
     *sprintf_out = '\0';
     return sprintf_out - out;
 }
@@ -156,17 +156,13 @@ int sprintf(char *out, const char *fmt, ...) {
 int snprintf(char *out, size_t n, const char *fmt, ...) {
     snprintf_maxout = out + n - 1;
     snprintf_out = out;
-    va_list ap;
-    va_start(ap, fmt);
-    char *first = (char *)fmt;
-    print(snprintf_char, ap, first);
-    va_end(ap);
+    PRINT_FMT(snprintf_char);
     *snprintf_out = '\0';
     return snprintf_out - out;
 }
 
 int vsnprintf(char *out, size_t n, const char *fmt, va_list ap) {
-  panic("Not implemented");
+    panic("Not implemented");
 }
 
 #endif

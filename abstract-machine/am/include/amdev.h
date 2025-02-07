@@ -4,8 +4,8 @@
 // **MAY SUBJECT TO CHANGE IN THE FUTURE**
 
 #define AM_DEVREG(id, reg, perm, ...) \
-  enum { AM_##reg = (id) }; \
-  typedef struct { __VA_ARGS__; } AM_##reg##_T;
+    enum { AM_##reg = (id) }; \
+    typedef struct { __VA_ARGS__; } AM_##reg##_T;
 
 AM_DEVREG( 1, UART_CONFIG,  RD, bool present);
 AM_DEVREG( 2, UART_TX,      WR, char data);
@@ -35,18 +35,18 @@ AM_DEVREG(24, NET_RX,       WR, Area buf);
 // Input
 
 #define AM_KEYS(_) \
-  _(ESCAPE) _(F1) _(F2) _(F3) _(F4) _(F5) _(F6) _(F7) _(F8) _(F9) _(F10) _(F11) _(F12) \
-  _(GRAVE) _(1) _(2) _(3) _(4) _(5) _(6) _(7) _(8) _(9) _(0) _(MINUS) _(EQUALS) _(BACKSPACE) \
-  _(TAB) _(Q) _(W) _(E) _(R) _(T) _(Y) _(U) _(I) _(O) _(P) _(LEFTBRACKET) _(RIGHTBRACKET) _(BACKSLASH) \
-  _(CAPSLOCK) _(A) _(S) _(D) _(F) _(G) _(H) _(J) _(K) _(L) _(SEMICOLON) _(APOSTROPHE) _(RETURN) \
-  _(LSHIFT) _(Z) _(X) _(C) _(V) _(B) _(N) _(M) _(COMMA) _(PERIOD) _(SLASH) _(RSHIFT) \
-  _(LCTRL) _(APPLICATION) _(LALT) _(SPACE) _(RALT) _(RCTRL) \
-  _(UP) _(DOWN) _(LEFT) _(RIGHT) _(INSERT) _(DELETE) _(HOME) _(END) _(PAGEUP) _(PAGEDOWN)
+    _(ESCAPE) _(F1) _(F2) _(F3) _(F4) _(F5) _(F6) _(F7) _(F8) _(F9) _(F10) _(F11) _(F12) \
+    _(GRAVE) _(1) _(2) _(3) _(4) _(5) _(6) _(7) _(8) _(9) _(0) _(MINUS) _(EQUALS) _(BACKSPACE) \
+    _(TAB) _(Q) _(W) _(E) _(R) _(T) _(Y) _(U) _(I) _(O) _(P) _(LEFTBRACKET) _(RIGHTBRACKET) _(BACKSLASH) \
+    _(CAPSLOCK) _(A) _(S) _(D) _(F) _(G) _(H) _(J) _(K) _(L) _(SEMICOLON) _(APOSTROPHE) _(RETURN) \
+    _(LSHIFT) _(Z) _(X) _(C) _(V) _(B) _(N) _(M) _(COMMA) _(PERIOD) _(SLASH) _(RSHIFT) \
+    _(LCTRL) _(APPLICATION) _(LALT) _(SPACE) _(RALT) _(RCTRL) \
+    _(UP) _(DOWN) _(LEFT) _(RIGHT) _(INSERT) _(DELETE) _(HOME) _(END) _(PAGEUP) _(PAGEDOWN)
 
 #define AM_KEY_NAMES(key) AM_KEY_##key,
 enum {
-  AM_KEY_NONE = 0,
-  AM_KEYS(AM_KEY_NAMES)
+    AM_KEY_NONE = 0,
+    AM_KEYS(AM_KEY_NAMES)
 };
 
 // GPU
@@ -58,17 +58,17 @@ enum {
 typedef uint32_t gpuptr_t;
 
 struct gpu_texturedesc {
-  uint16_t w, h;
-  gpuptr_t pixels;
+    uint16_t w, h;
+    gpuptr_t pixels;
 } __attribute__((packed));
 
 struct gpu_canvas {
-  uint16_t type, w, h, x1, y1, w1, h1;
-  gpuptr_t sibling;
-  union {
-    gpuptr_t child;
-    struct gpu_texturedesc texture;
-  };
+    uint16_t type, w, h, x1, y1, w1, h1;
+    gpuptr_t sibling;
+    union {
+        gpuptr_t child;
+        struct gpu_texturedesc texture;
+    };
 } __attribute__((packed));
 
 #endif
