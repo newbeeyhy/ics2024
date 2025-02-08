@@ -15,14 +15,28 @@
 
 #include <isa.h>
 
-word_t isa_raise_intr(word_t NO, vaddr_t epc) {
-  /* TODO: Trigger an interrupt/exception with ``NO''.
-   * Then return the address of the interrupt/exception vector.
-   */
+word_t get_status_bit(int n) {
+    return (cpu.mstatus >> n) & 1;
+}
 
-  return 0;
+void set_status_bit(int n, word_t x) {
+    cpu.mstatus = (cpu.mstatus & (~(1 << n))) | (x << n);
+}
+
+#define MIE_offset 3
+#define MPIE_offset 7
+
+word_t isa_raise_intr(word_t NO, vaddr_t epc) {
+    /* Trigger an interrupt/exception with NO.
+     * Then return the address of the interrupt/exception vector.
+     */
+    cpu.mcause = NO;
+    cpu.mepc = epc;
+    set_status_bit(MPIE_offset, get_status_bit(MIE_offset));
+    set_status_bit(MIE_offset, 0);
+    return cpu.mtvec;
 }
 
 word_t isa_query_intr() {
-  return INTR_EMPTY;
+    return INTR_EMPTY;
 }
