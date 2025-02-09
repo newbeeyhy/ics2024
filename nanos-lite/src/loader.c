@@ -10,13 +10,13 @@
 #endif
 
 static uintptr_t loader(PCB *pcb, const char *filename) {
-  TODO();
-  return 0;
+    TODO();
+    return 0;
 }
 
 void naive_uload(PCB *pcb, const char *filename) {
-  uintptr_t entry = loader(pcb, filename);
-  Log("Jump to entry = %p", entry);
-  ((void(*)())entry) ();
+    uintptr_t entry = loader(pcb, filename);
+    Log("Jump to entry = %p", entry);
+    ((void(*)())entry) ();
 }
 
