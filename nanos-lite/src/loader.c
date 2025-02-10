@@ -28,32 +28,23 @@ size_t get_ramdisk_size();
 static uintptr_t loader(PCB *pcb, const char *filename) {
     Log("Loading elf from disk...");
 
-    Elf_Ehdr *elf;
-    Elf_Phdr *ph, *eph;
+    Elf_Ehdr elf;
+    Elf_Phdr ph;
     
-    uint8_t buf[4096];
+    ramdisk_read(&elf, ELF_OFFSET_IN_DISK, sizeof(elf));
 
-    ramdisk_read(buf, ELF_OFFSET_IN_DISK, 4096);
-    elf = (void *)buf;
+    assert(*(uint32_t *)elf.e_ident == 0x464c457f); // check magic
+    assert(elf.e_machine == EXPECT_TYPE); // check arch
 
-    assert(*(uint32_t *)elf->e_ident == 0x464c457f); // check magic
-    assert(elf->e_machine == EXPECT_TYPE); // check arch
-
-    ph = (void *)elf + elf->e_phoff;
-    eph = ph + elf->e_phnum;
-
-    for (; ph < eph; ph++) {
-        if (ph->p_type == PT_LOAD) {
-            uint32_t vaddr;
-            vaddr = ph->p_vaddr;
-            memcpy((void *)vaddr, (void *)elf + ph->p_offset, ph->p_filesz);
-            memset((void *)vaddr + ph->p_filesz, 0, ph->p_memsz - ph->p_filesz);
+    for (size_t i = 0; i < elf.e_phnum; i++) {
+        ramdisk_read(&ph, ELF_OFFSET_IN_DISK + elf.e_phoff + i * elf.e_phentsize, elf.e_phentsize);
+        if (ph.p_type == PT_LOAD) {
+            ramdisk_read((void *)ph.p_vaddr, ELF_OFFSET_IN_DISK + ph.p_offset, ph.p_filesz);
+            memset((void *)ph.p_vaddr + ph.p_filesz, 0, ph.p_memsz - ph.p_filesz);
         }
     }
 
-    volatile uint32_t entry = elf->e_entry;
-
-    return entry;
+    return elf.e_entry;
 }
 
 void naive_uload(PCB *pcb, const char *filename) {
