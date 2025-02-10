@@ -121,7 +121,7 @@ static void print(void (*putc)(char), va_list ap, char *first) {
             putc(*first);
         }
         first++;
-    } 
+    }
     if (f == 1) {
         putc('%');
     }
@@ -146,7 +146,6 @@ int vsprintf(char *out, const char *fmt, va_list ap) {
 }
 
 int sprintf(char *out, const char *fmt, ...) {
-    //out <- fmt
     sprintf_out = out;
     PRINT_FMT(sprintf_char);
     *sprintf_out = '\0';

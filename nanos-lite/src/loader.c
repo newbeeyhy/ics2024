@@ -30,7 +30,7 @@ static uintptr_t loader(PCB *pcb, const char *filename) {
 
     Elf_Ehdr elf;
     Elf_Phdr ph;
-    
+
     ramdisk_read(&elf, ELF_OFFSET_IN_DISK, sizeof(elf));
 
     assert(*(uint32_t *)elf.e_ident == 0x464c457f); // check magic

@@ -42,7 +42,7 @@ extern void __am_asm_trap(void);
 bool cte_init(Context*(*handler)(Event, Context*)) {
     // initialize exception entry
     asm volatile("csrw mtvec, %0" : : "r"(__am_asm_trap));
-    
+
     // register event handler
     user_handler = handler;
 
@@ -59,6 +59,16 @@ void yield() {
 #else
     asm volatile("li a7, -1; ecall");
 #endif
+}
+
+int write(int fd, const char *buf, size_t count) {
+    if (fd == 1 || fd == 2) {
+        for (size_t i = 0; i < count; i++) {
+            putch(buf[i]);
+        }
+        return count;
+    }
+    return -1;
 }
 
 bool ienabled() {
