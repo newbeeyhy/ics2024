@@ -53,12 +53,13 @@ Context *kcontext(Area kstack, void (*entry)(void *), void *arg) {
     return NULL;
 }
 
-void yield() {
+int yield() {
 #ifdef __riscv_e
     asm volatile("li a5, -1; ecall");
 #else
     asm volatile("li a7, -1; ecall");
 #endif
+    return 0;
 }
 
 int write(int fd, const char *buf, size_t count) {
@@ -69,6 +70,11 @@ int write(int fd, const char *buf, size_t count) {
         return count;
     }
     return -1;
+}
+
+int brk(intptr_t addr) {
+    // TODO
+    return 0;
 }
 
 bool ienabled() {
