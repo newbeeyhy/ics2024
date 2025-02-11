@@ -1,5 +1,6 @@
 #include <proc.h>
 #include <elf.h>
+#include <fs.h>
 
 #ifdef __LP64__
 # define Elf_Ehdr Elf64_Ehdr
@@ -20,11 +21,6 @@
 #endif
 
 #define ELF_OFFSET_IN_DISK 0
-
-int fs_open(const char *pathname, int flags, int mode);
-size_t fs_lseek(int fd, size_t offset, int whence);
-size_t fs_read(int fd, void *buf, size_t len);
-int fs_close(int fd);
 
 static uintptr_t loader(PCB *pcb, const char *filename) {
     Log("Loading elf \"%s\" from disk...", filename);

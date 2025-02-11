@@ -1,11 +1,30 @@
 #include <common.h>
 #include "syscall.h"
+#include <fs.h>
 
-int fs_open(const char *pathname, int flags, int mode);
-size_t fs_write(int fd, const void *buf, size_t len);
-size_t fs_read(int fd, void *buf, size_t len);
-size_t fs_lseek(int fd, size_t offset, int whence);
-int fs_close(int fd);
+struct timeval {
+    long tv_sec;  // 从1970年1月1日00:00:00 UTC到当前时间的秒数
+    long tv_usec; // 当前秒内的微秒数
+};
+
+struct timezone {
+    int tz_minuteswest;  // 和格林威治时间（GMT）相差的分钟数，负数表示在格林威治时间西边
+    int tz_dsttime;      // 夏令时相关信息（具体值和系统相关）
+};
+
+int sys_gettimeofday(struct timeval *tv, struct timezone *tz){
+    if (tv == NULL && tz == NULL) return -1;
+    if (tv != NULL) {
+        int us;
+        ioe_read(AM_TIMER_UPTIME, &us);
+        tv->tv_sec = us / 1000000;
+        tv->tv_usec = us % 1000000;
+    }
+    if (tz != NULL) {
+        panic("Timezone wrong");
+    }
+    return 0;
+}
 
 void do_syscall(Context *c) {
     uintptr_t a[4];
@@ -22,6 +41,7 @@ void do_syscall(Context *c) {
         case SYS_write: c->GPRx = fs_write(a[1], (char*)a[2], a[3]); break;
         case SYS_lseek: c->GPRx = fs_lseek(a[1], a[2], a[3]); break;
         case SYS_close: c->GPRx = fs_close(a[1]); break;
+        case SYS_gettimeofday: c->GPRx = sys_gettimeofday((void *)a[1], (void *)a[2]); break;
         default: panic("Unhandled syscall ID = %d", a[0]);
     }
 }
