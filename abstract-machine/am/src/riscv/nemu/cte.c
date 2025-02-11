@@ -62,21 +62,6 @@ int yield() {
     return 0;
 }
 
-int write(int fd, const char *buf, size_t count) {
-    if (fd == 1 || fd == 2) {
-        for (size_t i = 0; i < count; i++) {
-            putch(buf[i]);
-        }
-        return count;
-    }
-    return -1;
-}
-
-int brk(intptr_t addr) {
-    // TODO
-    return 0;
-}
-
 bool ienabled() {
     return false;
 }

@@ -21,28 +21,43 @@
 
 #define ELF_OFFSET_IN_DISK 0
 
-size_t ramdisk_read(void *buf, size_t offset, size_t len);
-size_t ramdisk_write(const void *buf, size_t offset, size_t len);
-size_t get_ramdisk_size();
+int fs_open(const char *pathname, int flags, int mode);
+size_t fs_lseek(int fd, size_t offset, int whence);
+size_t fs_read(int fd, void *buf, size_t len);
+int fs_close(int fd);
 
 static uintptr_t loader(PCB *pcb, const char *filename) {
-    Log("Loading elf from disk...");
+    Log("Loading elf \"%s\" from disk...", filename);
 
     Elf_Ehdr elf;
     Elf_Phdr ph;
 
-    ramdisk_read(&elf, ELF_OFFSET_IN_DISK, sizeof(elf));
+    int fd = fs_open(filename, 0, 0);
+
+    if (fd == -1) {
+        panic("Load file %s fault!", filename);
+        return -1;
+    }
+
+    fs_lseek(fd, ELF_OFFSET_IN_DISK, 0);
+    fs_read(fd, &elf, sizeof(elf));
 
     assert(*(uint32_t *)elf.e_ident == 0x464c457f); // check magic
     assert(elf.e_machine == EXPECT_TYPE); // check arch
 
+    fs_lseek(fd, elf.e_phoff, 1);
+
     for (size_t i = 0; i < elf.e_phnum; i++) {
-        ramdisk_read(&ph, ELF_OFFSET_IN_DISK + elf.e_phoff + i * elf.e_phentsize, elf.e_phentsize);
+        fs_lseek(fd, ELF_OFFSET_IN_DISK + elf.e_phoff + i * elf.e_phentsize, 0);
+        fs_read(fd, &ph, elf.e_phentsize);
         if (ph.p_type == PT_LOAD) {
-            ramdisk_read((void *)ph.p_vaddr, ELF_OFFSET_IN_DISK + ph.p_offset, ph.p_filesz);
+            fs_lseek(fd, ELF_OFFSET_IN_DISK + ph.p_offset, 0);
+            fs_read(fd, (void *)ph.p_vaddr, ph.p_filesz);
             memset((void *)ph.p_vaddr + ph.p_filesz, 0, ph.p_memsz - ph.p_filesz);
         }
     }
+
+    fs_close(fd);
 
     return elf.e_entry;
 }
