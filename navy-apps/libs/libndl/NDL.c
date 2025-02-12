@@ -3,10 +3,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <assert.h>
 
 static int evtdev = -1;
 static int fbdev = -1;
 static int screen_w = 0, screen_h = 0;
+static int canvas_w = 0, canvas_h = 0;
+static int canvas_x = 0, canvas_y = 0;
 
 uint32_t NDL_GetTicks() {
     struct timeval tv;
@@ -19,6 +22,32 @@ int NDL_PollEvent(char *buf, int len) {
     int ret = read(fd, buf, len);
     close(fd);
     return ret;
+}
+
+static int decode(int i, char *buf, const char *key, int *value) {
+    #define buf_size 1024
+
+    int len = strlen(key);
+
+    assert(strncmp(buf + i, key, len) == 0);
+    i += len;
+
+    for (; i < buf_size; i++) {
+        if (buf[i] == ':') { i++; break; }
+        assert(buf[i] == ' ');
+    }
+    for (; i < buf_size; i++) {
+        if (buf[i] >= '0' && buf[i] <= '9') break;
+        assert(buf[i] == ' ');
+    }
+    for (; i < buf_size; i++) {
+        if (buf[i] >= '0' && buf[i] <= '9') {
+            *value = (*value) * 10 + buf[i] - '0';
+        } else {
+            break;
+        }
+    }
+    return i;
 }
 
 void NDL_OpenCanvas(int *w, int *h) {
@@ -39,9 +68,46 @@ void NDL_OpenCanvas(int *w, int *h) {
         }
         close(fbctl);
     }
+
+    char buf[1024];
+    int fd = open("/proc/dispinfo", 0, 0);
+    int ret = read(fd, buf, buf_size);
+
+    assert(ret < buf_size); // to be cautious...
+
+    close(fd);
+
+    int i = 0;
+    int width = 0, height = 0;
+
+    i = decode(i, buf, "WIDTH", &width);
+    assert(buf[i++] == '\n');
+    i = decode(i, buf, "HEIGHT", &height);
+
+    screen_w = width;
+    screen_h = height;
+
+    if (*w == 0 && *h == 0) {
+        *w = screen_w;
+        *h = screen_h;
+    }
+
+    canvas_w = *w;
+    canvas_h = *h;
+
+    assert(canvas_w <= screen_w && canvas_h <= screen_h);
+
+    canvas_x = (screen_w - canvas_w) / 2;
+    canvas_y = (screen_h - canvas_h) / 2;
 }
 
 void NDL_DrawRect(uint32_t *pixels, int x, int y, int w, int h) {
+    int fd = open("/dev/fb", 0, 0);
+    for (int i = 0; i < h && y + i < canvas_h; i++) {
+        lseek(fd, ((y + canvas_y + i) * screen_w + (x + canvas_x)) * 4, 0);
+        write(fd, pixels + i * w, 4 * ((w < canvas_w - x) ? w : (canvas_w - x)));
+    }
+    close(fd);
 }
 
 void NDL_OpenAudio(int freq, int channels, int samples) {

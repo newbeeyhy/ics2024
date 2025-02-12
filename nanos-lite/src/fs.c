@@ -12,7 +12,7 @@ typedef struct {
     WriteFn write;
 } Finfo;
 
-enum {FD_STDIN, FD_STDOUT, FD_STDERR, FD_FB};
+enum {FD_STDIN, FD_STDOUT, FD_STDERR, FD_FB, FD_EVENTS, FD_DISPINFO};
 
 size_t invalid_read(void *buf, size_t offset, size_t len) {
     panic("should not reach here");
@@ -24,20 +24,22 @@ size_t invalid_write(const void *buf, size_t offset, size_t len) {
     return 0;
 }
 
-size_t ramdisk_write(const void *buf, size_t offset, size_t len);
-size_t ramdisk_read(void *buf, size_t offset, size_t len);
-size_t serial_write(const void *buf, size_t offset, size_t len);
-size_t events_read(void *buf, size_t offset, size_t len);
-size_t dispinfo_read(void *buf, size_t offset, size_t len);
-size_t fb_write(const void *buf, size_t offset, size_t len);
+size_t ramdisk_write    (const void *buf, size_t offset, size_t len);
+size_t ramdisk_read     (      void *buf, size_t offset, size_t len);
+size_t serial_write     (const void *buf, size_t offset, size_t len);
+size_t events_read      (      void *buf, size_t offset, size_t len);
+size_t dispinfo_read    (      void *buf, size_t offset, size_t len);
+size_t fb_write         (const void *buf, size_t offset, size_t len);
 
 /* This is the information about all files in disk. */
 static Finfo file_table[] __attribute__((used)) = {
-    [FD_STDIN]  = {"stdin", 0, 0, 0, invalid_read, invalid_write},
-    [FD_STDOUT] = {"stdout", 0, 0, 0, invalid_read, serial_write},
-    [FD_STDERR] = {"stderr", 0, 0, 0, invalid_read, serial_write},
+    [FD_STDIN]    = {         "stdin", 0, 0, 0,  invalid_read, invalid_write},
+    [FD_STDOUT]   = {        "stdout", 0, 0, 0,  invalid_read,  serial_write},
+    [FD_STDERR]   = {        "stderr", 0, 0, 0,  invalid_read,  serial_write},
+    [FD_FB]       = {       "/dev/fb", 0, 0, 0,          NULL,      fb_write},
+    [FD_EVENTS]   = {   "/dev/events", 0, 0, 0,   events_read, invalid_write},
+    [FD_DISPINFO] = {"/proc/dispinfo", 0, 0, 0, dispinfo_read, invalid_write},
 #include "files.h"
-    {"/dev/events", 0, 0, 0, events_read, invalid_write},
 };
 
 static int file_num = sizeof(file_table) / sizeof(Finfo);
@@ -48,17 +50,17 @@ char *fs_name(int fd) {
 }
 
 int fs_open(const char *pathname, int flags, int mode) {
-    for (int i = FD_FB; i < file_num; i++ ) {
+    for (int i = 0; i < file_num; i++ ) {
         if (strcmp(file_table[i].name, pathname) == 0) {
             return i;
         }
     }
-    panic("Invalid file name \"%s\"!", pathname);
+    panic("File open error, invalid file name \"%s\"!", pathname);
     return -1;
 }
 
 size_t fs_write(int fd, const void *buf, size_t len) {
-    if (fd >= FD_FB && fd < file_num) {
+    if (fd >= 0 && fd < file_num) {
         if (file_table[fd].write != NULL) {
             return file_table[fd].write(buf, file_table[fd].open_offset, len);
         } else {
@@ -73,15 +75,13 @@ size_t fs_write(int fd, const void *buf, size_t len) {
             putch(str[i]);
         }
         return len;
-    } else if (fd == FD_STDIN) {
-        return 0;
     }
-    panic("Error, fd %d out of bound %d!", fd, file_num);
+    panic("File write error, fd %d out of bound %d!", fd, file_num);
     return -1;
 }
 
 size_t fs_read(int fd, void *buf, size_t len) {
-    if (fd >= FD_FB && fd < file_num) {
+    if (fd >= 0 && fd < file_num) {
         if (file_table[fd].read != NULL) {
             return file_table[fd].read(buf, file_table[fd].open_offset, len);
         } else {
@@ -90,15 +90,13 @@ size_t fs_read(int fd, void *buf, size_t len) {
             file_table[fd].open_offset += read_len;
             return read_len;
         }
-    } else if (fd >= 0 && fd < FD_FB) {
-        return 0;
     }
-    panic("Error, fd %d out of bound %d!", fd, file_num);
+    panic("File read error, fd %d out of bound %d!", fd, file_num);
     return -1;
 }
 
 size_t fs_lseek(int fd, size_t offset, int whence) {
-    if (fd >= FD_FB && fd < file_num) {
+    if (fd >= 0 && fd < file_num) {
         switch (whence) {
             case SEEK_SET: file_table[fd].open_offset = offset; break;
             case SEEK_CUR: file_table[fd].open_offset += offset; break;
@@ -112,10 +110,8 @@ size_t fs_lseek(int fd, size_t offset, int whence) {
         } else {
             return file_table[fd].open_offset;
         }
-    } else if (fd >= 0 && fd < FD_FB) {
-        return 0;
     }
-    panic("Error, fd %d out of bound %d!", fd, file_num);
+    panic("File lseek error, fd %d out of bound %d!", fd, file_num);
     return -1;
 }
 
@@ -124,12 +120,12 @@ int fs_close(int fd) {
         file_table[fd].open_offset = 0;
         return 0;
     }
-    panic("Invalid fd %d!", fd);
+    panic("File close error, fd %d out of bound %d!", fd, file_num);
     return -1;
 }
 
 void init_fs() {
-    //AM_GPU_CONFIG_T gpu_config;
-    //ioe_read(AM_GPU_CONFIG, &gpu_config);
-    //file_table[fs_open("/dev/fb", 0, 'r')].size = gpu_config.width * gpu_config.height;
+    AM_GPU_CONFIG_T gpu_config;
+    ioe_read(AM_GPU_CONFIG, &gpu_config);
+    file_table[FD_FB].size = gpu_config.width * gpu_config.height * 4;
 }
